@@ -8,14 +8,12 @@ from sklearn.utils.class_weight import compute_class_weight
 import numpy as np
 import os
 
-# --- 1. Configuration ---
 DATASET_PATH = 'fer2013'
 IMAGE_SIZE = (48, 48)
 BATCH_SIZE = 64
 NUM_CLASSES = 7
 MODEL_SAVE_PATH = 'model_deteksi_ekspresi_terbaik.h5'
 
-# --- 2. Data Generators ---
 train_datagen = ImageDataGenerator(
     rescale=1./255,
     rotation_range=15,
@@ -36,7 +34,6 @@ train_generator = train_datagen.flow_from_directory(
     shuffle=True
 )
 
-# Print class indices — CRITICAL for test.py
 print("Train class indices:", train_generator.class_indices)
 
 validation_datagen = ImageDataGenerator(rescale=1./255)
@@ -49,7 +46,6 @@ validation_generator = validation_datagen.flow_from_directory(
     shuffle=False
 )
 
-# --- 3. Compute Class Weights (Fix imbalance) ---
 train_labels = train_generator.classes
 class_weights = compute_class_weight(
     class_weight='balanced',
@@ -59,34 +55,28 @@ class_weights = compute_class_weight(
 class_weight_dict = dict(enumerate(class_weights))
 print("Class weights:", class_weight_dict)
 
-# --- 4. Build Model ---
 model = Sequential([
-    # Block 1
     Conv2D(64, (3, 3), activation='relu', input_shape=(48, 48, 1)),
     BatchNormalization(),
     MaxPooling2D((2, 2)),
     Dropout(0.25),
 
-    # Block 2
     Conv2D(128, (3, 3), activation='relu'),
     BatchNormalization(),
     MaxPooling2D((2, 2)),
     Dropout(0.25),
 
-    # Block 3
     Conv2D(256, (3, 3), activation='relu'),
     BatchNormalization(),
     MaxPooling2D((2, 2)),
     Dropout(0.25),
 
-    # Classifier
     Flatten(),
     Dense(256, activation='relu'),
     Dropout(0.5),
     Dense(NUM_CLASSES, activation='softmax')
 ])
 
-# --- 5. Compile ---
 model.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
     loss='categorical_crossentropy',
@@ -95,11 +85,9 @@ model.compile(
 
 model.summary()
 
-# --- 6. Callbacks ---
 early_stop = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 checkpoint = ModelCheckpoint(MODEL_SAVE_PATH, monitor='val_accuracy', save_best_only=True, mode='max')
 
-# --- 7. Train ---
 EPOCHS = 100
 history = model.fit(
     train_generator,
@@ -107,7 +95,7 @@ history = model.fit(
     epochs=EPOCHS,
     validation_data=validation_generator,
     validation_steps=validation_generator.samples // BATCH_SIZE,
-    class_weight=class_weight_dict,  # ← Key fix for imbalance
+    class_weight=class_weight_dict,  
     callbacks=[early_stop, checkpoint]
 )
 
